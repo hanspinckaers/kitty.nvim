@@ -15,3 +15,9 @@ to send either
 To the last recently focused kitty pane.
 
 This is pretty much all I need - but PR's welcome
+
+# requirements
+
+```shell
+brew install jq
+```

@@ -1,4 +1,7 @@
 local kitty = {}
+
+-- this is a dev tool which helps reloading
+-- the pluggin files
 function kitty.reload()
     for k in pairs(package.loaded) do
         if k:match("kitty") then
@@ -7,10 +10,21 @@ function kitty.reload()
         end
     end
 end
+
 local kitty_listen_on = "unix:/tmp/mykitty"
 local cell_delimiter = '# %%'
 
+function kitty.repl_prefix()
+    if vim.bo.filetype == "python" then
+        return "%cpaste -q\n"
+   end
+end
 
+function kitty.repl_suffix()
+    if vim.bo.filetype == "python" then
+        return "--\n"
+    end
+end
 function kitty.get_last_tab()
     local query = [[ 
     kitty @ ls | 
@@ -25,7 +39,7 @@ function kitty.get_last_tab()
     return vim.fn.system(query)
 end
 
-function kitty.get_cell()
+function kitty.send_cell()
     local line_ini = vim.fn.search(cell_delimiter, 'bcnW')
     local line_end = vim.fn.search(cell_delimiter, 'nW')
 
@@ -40,14 +54,23 @@ function kitty.get_cell()
 end
 
 function kitty.send_range(startline, endline)
+    -- save registers for restore
+    local rv = vim.fn.getreg('"')
+    local rt = vim.fn.getregtype('"')
+    vim.cmd( startline .. ',' ..  endline .. "yank" )
+    local payload = vim.fn.getreg("@\"")
+    local prefix = kitty.repl_prefix()
+    local suffix = kitty.repl_suffix()
 
- -- save registers for restore
-  local rv = vim.fn.getreg('"')
-  local rt = vim.fn.getregtype('"')
-  vim.cmd( startline .. ',' ..  endline .. "yank" )
-  kitty.send(vim.fn.getreg("@\""))
-  -- restore
-  vim.fn.setreg('"', rv, rt)
+    if prefix then
+        kitty.send(prefix)
+    end
+    kitty.send(payload)
+    if suffix then
+        kitty.send(suffix)
+    end
+    -- restore
+    vim.fn.setreg('"', rv, rt)
 end
 
 function kitty.send(text)
@@ -56,10 +79,5 @@ function kitty.send(text)
    local cmd = "kitty @" .. to_flag .. " send-text --match id:" .. vim.fn.shellescape(last_tab) .. " --stdin"
    vim.fn.system(cmd, text)
 end
-
-function kitty.setup()
-    print("kitty setup")
-end
-
 
 return kitty
