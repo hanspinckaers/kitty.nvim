@@ -25,6 +25,7 @@ function kitty.repl_suffix()
         return "--\n"
     end
 end
+
 function kitty.get_last_tab()
     local query = [[ 
     kitty @ ls | 
@@ -71,6 +72,45 @@ function kitty.send_range(startline, endline)
     end
     -- restore
     vim.fn.setreg('"', rv, rt)
+end
+
+function kitty.send_current_line()
+    local line = vim.fn.line(".")
+    local payload = vim.fn.getline(line)
+    kitty.send(payload .. "\n")
+end
+
+function kitty.send_selected_lines()
+    local startline = vim.fn.line("'<")
+    local endline = vim.fn.line("'>")
+    kitty.send_range(startline, endline)
+end
+
+function kitty.send_current_word()
+    vim.cmd("yiw")
+    kitty.send(vim.fn.getreg("@\"" .. "\n"))
+end
+
+function kitty.send_file()
+    local filename = vim.fn.expand("%:p")
+    local payload = ""
+    local lines = vim.fn.readfile(filename)
+    for _, line in ipairs(lines) do
+        payload = payload .. line .. "\n"
+    end
+
+    local prefix = kitty.repl_prefix()
+    local suffix = kitty.repl_suffix()
+
+    if prefix then
+        kitty.send(prefix)
+    end
+
+    kitty.send(payload)
+    if suffix then
+        kitty.send(suffix)
+    end
+
 end
 
 function kitty.send(text)
