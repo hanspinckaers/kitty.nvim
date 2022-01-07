@@ -22,6 +22,11 @@ This is pretty much all I need - but PR's welcome
 brew install jq
 ```
 
+Also you need this little bad boy in your kitty.conf
+
+```
+listen_on unix:/tmp/mykitty
+```
 # key mappings
 
 You do you, but these are mine
