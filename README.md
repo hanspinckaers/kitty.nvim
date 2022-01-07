@@ -16,7 +16,7 @@ To the last recently focused kitty pane.
 
 This is pretty much all I need - but PR's welcome
 
-![](./static/demo.mp4)
+![](./static/demo.gif)
 
 # requirements
 
