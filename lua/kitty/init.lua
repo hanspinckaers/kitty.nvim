@@ -87,8 +87,8 @@ function kitty.send_selected_lines()
 end
 
 function kitty.send_current_word()
-    vim.cmd("yiw")
-    kitty.send(vim.fn.getreg("@\"" .. "\n"))
+    vim.cmd("normal! yiw")
+    kitty.send(vim.fn.getreg("@\"") .. "\n")
 end
 
 function kitty.send_file()

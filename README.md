@@ -21,3 +21,14 @@ This is pretty much all I need - but PR's welcome
 ```shell
 brew install jq
 ```
+
+# key mappings
+
+You do you, but these are mine
+
+```
+nnoremap <space>k :lua require'kitty'.send_cell()<cr>
+nnoremap <space>l :lua require'kitty'.send_current_line()<cr>
+vnoremap <space>l :lua require'kitty'.send_selected_lines()<cr>
+nnoremap <space>h :lua require'kitty'.send_current_word()<cr>
+```
