@@ -1,4 +1,5 @@
 local kitty = {}
+local c = vim.cmd
 
 -- this is a dev tool which helps reloading
 -- the pluggin files
@@ -13,6 +14,14 @@ end
 
 local kitty_listen_on = "unix:/tmp/mykitty"
 local cell_delimiter = '# %%'
+local cell_delimiter_regex = '# \\%\\%'
+
+function kitty.setup(config)
+    c([[
+    highlight KittyCellDelimiterColor guifg=#44475a guibg=#44475a 
+    sign define KittyCellDelimiters linehl=KittyCellDelimiterColor
+    ]])
+end
 
 function kitty.repl_prefix()
     if vim.bo.filetype == "python" then
@@ -24,6 +33,22 @@ function kitty.repl_suffix()
     if vim.bo.filetype == "python" then
         return "--\n"
     end
+end
+
+function kitty.highlight_cell_delimiter()
+    c("sign unplace * group=KittyCellDelimiters buffer=" .. vim.fn.bufnr())
+    local lines = vim.fn.getline(0, '$')
+    for line_number, line in pairs(lines) do
+        if line:find(cell_delimiter) then
+            c(
+                "sign place 1 line=" ..
+                line_number ..
+                " group=KittyCellDelimiters name=KittyCellDelimiters buffer=" ..
+                vim.fn.bufnr()
+             )
+        end
+    end
+
 end
 
 function kitty.get_last_tab()

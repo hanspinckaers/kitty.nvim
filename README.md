@@ -39,3 +39,13 @@ nnoremap <space>l :lua require'kitty'.send_current_line()<cr>
 vnoremap <space>l :lua require'kitty'.send_selected_lines()<cr>
 nnoremap <space>h :lua require'kitty'.send_current_word()<cr>
 ```
+# Highlights
+
+```
+autocmd BufEnter,InsertLeave,TextChanged *.pynb,*.py call luaeval("require'kitty'.highlight_cell_delimiter()")
+```
+
+
+# Credits
+
+Highlighting idea stolen from https://github.com/luk400/vim-jukit
