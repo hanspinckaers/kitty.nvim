@@ -1,6 +1,7 @@
 local kitty = {}
 local c = vim.cmd
 
+kitty.path = os.getenv("HOME") .. "/.vim/plugged/kitty.nvim/lua/kitty/" 
 -- this is a dev tool which helps reloading
 -- the pluggin files
 function kitty.reload()
@@ -16,10 +17,45 @@ local kitty_listen_on = "unix:/tmp/mykitty"
 local cell_delimiter = '# %%'
 local cell_delimiter_regex = '# \\%\\%'
 
+local imports = [[
+from pathlib import Path
+import json
+import os
+import pandas as pd
+
+json_file = "/tmp/tmp.json"
+csv_file = "/tmp/tmp.csv"
+bin_file = "/tmp/tmp.bin"
+]]
+
+local hexyl_cmd = [[
+with Path(bin_file).open("wb") as a:
+    a.write(r)
+! hexyl {bin_file}
+]]
+
+local nvim_cmd = [[
+with Path(json_file).open("w") as a:
+    a.write(json.dumps(r))
+
+!nvim {json_file}
+]]
+
+local fx_cmd = [[
+with Path(json_file).open("w") as a:
+    a.write(json.dumps(r))
+! fx {json_file}
+]]
+
+local vd_cmd = [[
+r.to_csv(csv_file)
+! vd {csv_file}
+]]
+
 function kitty.setup(config)
     c([[
-    highlight KittyCellDelimiterColor guifg=#44475a guibg=#44475a 
-    sign define KittyCellDelimiters linehl=KittyCellDelimiterColor
+    highlight KittyCellDelimiterColor guifg=#191920 guibg=#1e1f28 
+    sign define KittyCellDelimiters linehl=KittyCellDelimiterColor text=>
     ]])
 end
 
@@ -51,20 +87,14 @@ function kitty.highlight_cell_delimiter()
 
 end
 
-function kitty.get_last_tab()
-    local query = [[ 
-    kitty @ ls | 
-    jq '.[] | 
-    .tabs[] |
-    select(.is_focused==true) |
-    .active_window_history[]' |
-    head -n 2 |
-    tail -n 1 | 
-    tr -d '\n'
-    ]]
-    return vim.fn.system(query)
-end
 
+
+function kitty.open_ipython()
+    local script = io.open(kitty.path .. "/open_ipython.sh", "r")
+    local query = script:read("*all")
+    script:close()
+    kitty.id = vim.fn.system(query)
+end
 function kitty.send_cell()
     local line_ini = vim.fn.search(cell_delimiter, 'bcnW')
     local line_end = vim.fn.search(cell_delimiter, 'nW')
@@ -140,9 +170,36 @@ end
 
 function kitty.send(text)
    local  to_flag = " --to " .. vim.fn.shellescape(kitty_listen_on)
-   local last_tab = kitty.get_last_tab()
-   local cmd = "kitty @" .. to_flag .. " send-text --match id:" .. vim.fn.shellescape(last_tab) .. " --stdin"
+   local cmd = "kitty @" .. to_flag .. " send-text --match id:" .. vim.fn.shellescape(kitty.id) .. " --stdin"
    vim.fn.system(cmd, text)
 end
 
+function kitty._store_var()
+    vim.cmd("normal! yiw")
+    kitty.send("r = " .. vim.fn.getreg("@\"") .. "\n")
+end
+
+function kitty.do_imports()
+    kitty.send(imports .. "\n")
+end
+
+function kitty.fx_current_word()
+    kitty._store_var()
+    kitty.send(fx_cmd .. "\n")
+end
+
+function kitty.hexyl_current_word()
+    kitty._store_var()
+    kitty.send(hexyl_cmd .. "\n")
+end
+
+function kitty.nvim_current_word()
+    kitty._store_var()
+    kitty.send(nvim_cmd .. "\n")
+end
+
+function kitty.vd_current_word()
+    kitty._store_var()
+    kitty.send(vd_cmd .. "\n")
+end
 return kitty

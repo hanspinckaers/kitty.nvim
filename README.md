@@ -49,3 +49,6 @@ autocmd BufEnter,InsertLeave,TextChanged *.pynb,*.py call luaeval("require'kitty
 # Credits
 
 Highlighting idea stolen from https://github.com/luk400/vim-jukit
+
+
+
