@@ -91,7 +91,8 @@ end
 
 
 function M.open(program)
-    M.id = vim.fn.system("kitty @ --to unix:/tmp/mykitty launch  --type=os-window " .. program):gsub("\n+[^\n]*$", "")
+    -- note: we're doing zsh -c to have the env be populated correctly
+    M.id = vim.fn.system("kitty @ --to unix:/tmp/mykitty launch  --type=os-window zsh -c '" .. program.. "'" ):gsub("\n+[^\n]*$", "") 
    print("id:", M.id)
 end
 function M.send_cell()
