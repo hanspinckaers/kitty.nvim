@@ -61,15 +61,17 @@ function M.setup(config)
 end
 
 function M.repl_prefix()
-    if vim.bo.filetype == "python" then
+    local t = vim.bo.filetype
+    if t == "python" then
         return "%cpaste -q\n"
    end
 end
 
 function M.repl_suffix()
-    if vim.bo.filetype == "python" then
-        return "--\n"
-    end
+    local t = vim.bo.filetype
+    if t == "python" then
+        return "--"
+   end
 end
 
 function M.highlight_cell_delimiter()
@@ -93,7 +95,6 @@ end
 function M.open(program)
     -- note: we're doing zsh -c to have the env be populated correctly
     M.id = vim.fn.system("kitty @ --to unix:/tmp/mykitty launch  --type=os-window zsh -c '" .. program.. "'" ):gsub("\n+[^\n]*$", "") 
-   print("id:", M.id)
 end
 function M.send_cell()
     local line_ini = vim.fn.search(cell_delimiter, 'bcnW')
@@ -172,8 +173,7 @@ function M.send(text)
    local  to_flag = " --to " .. vim.fn.shellescape(kitty_listen_on)
    local cmd = "kitty @" .. to_flag .. " send-text --match id:" .. vim.fn.shellescape(M.id) .. " --stdin"
    vim.fn.system(cmd, text)
-   print("text:", text)
-   print("cmd:", cmd)
+   vim.fn.system(cmd, "\r")
 end
 
 function M._store_var()
@@ -211,12 +211,13 @@ local function _C(name, cb, desc)
     })
 end
 function M.init_user_commands()
-    _C("IPy", function() M.open("/Users/lucanaef/mambaforge/bin/ipython") end, "Open IPython in Kitty")
-    _C("Nu", function() M.open("/Users/lucanaef/.cargo/bin/nu") end, "Open Nu in Kitty")
+    _C("IPy", function() M.open("ipython") end, "Open IPython in Kitty")
+    _C("Nu", function() M.open("nu") end, "Open Nu in Kitty")
     _C("SendCell", M.send_cell, "Send Cell in Kitty")
     _C("SendCurrentLine", M.send_current_line, "Send Cell in Kitty")
     _C("SendWord", M.send_current_word, "Send Cell in Kitty")
     _C("SendLines", M.send_selected_lines, "Send Cell in Kitty")
+    _C("SendFile", M.send_file, "Send File in Kitty")
     _C("Reload", M.reload, "Reload Kitty (DevTool)")
 end
 
