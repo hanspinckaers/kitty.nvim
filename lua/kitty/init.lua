@@ -94,7 +94,7 @@ end
 
 function M.open(program)
     -- note: we're doing zsh -c to have the env be populated correctly
-    M.id = vim.fn.system("kitty @ --to unix:/tmp/mykitty launch  --type=os-window zsh -c '" .. program.. "'" ):gsub("\n+[^\n]*$", "") 
+    M.id = vim.fn.system("kitty @ --to unix:/tmp/mykitty launch  --type=os-window zsh -c '" .. program.. "'" ):gsub("\n+[^\n]*$", "")
 end
 function M.send_cell()
     local line_ini = vim.fn.search(cell_delimiter, 'bcnW')
@@ -136,10 +136,8 @@ function M.send_current_line()
     M.send(payload .. "\n")
 end
 
-function M.send_selected_lines()
-    local startline = vim.fn.line("'<")
-    local endline = vim.fn.line("'>")
-    M.send_range(startline, endline)
+function M.send_selected_lines(opts)
+    M.send_range(opts.line1, opts.line2)
 end
 
 function M.send_current_word()
@@ -204,19 +202,22 @@ function M.vd_current_word()
     M._store_var()
     M.send(vd_cmd .. "\n")
 end
-local function _C(name, cb, desc)
+local function _C(name, cb, desc, range)
     vim.api.nvim_create_user_command("Kitty" .. name, cb, {
         nargs = "*",
         desc = desc,
+        range = range or 1,
     })
 end
 function M.init_user_commands()
     _C("IPy", function() M.open("ipython") end, "Open IPython in Kitty")
     _C("Nu", function() M.open("nu") end, "Open Nu in Kitty")
+    _C("Zsh", function() M.open("zsh") end, "Open zsh in Kitty")
+    _C("Hs", function() M.open("lua") end, "Open hammerspoon in Kitty")
     _C("SendCell", M.send_cell, "Send Cell in Kitty")
     _C("SendCurrentLine", M.send_current_line, "Send Cell in Kitty")
     _C("SendWord", M.send_current_word, "Send Cell in Kitty")
-    _C("SendLines", M.send_selected_lines, "Send Cell in Kitty")
+    _C("SendLines", M.send_selected_lines, "Send Cell in Kitty", "%")
     _C("SendFile", M.send_file, "Send File in Kitty")
     _C("Reload", M.reload, "Reload Kitty (DevTool)")
 end
