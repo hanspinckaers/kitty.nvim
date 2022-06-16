@@ -1,10 +1,10 @@
-local kitty = {}
+local M = {}
 local c = vim.cmd
 
-kitty.path = os.getenv("HOME") .. "/.vim/plugged/kitty.nvim/lua/kitty/" 
+M.path = os.getenv("HOME") .. "/kitty.nvim/lua/kitty/"
 -- this is a dev tool which helps reloading
 -- the pluggin files
-function kitty.reload()
+function M.reload()
     for k in pairs(package.loaded) do
         if k:match("kitty") then
             print("reloading " .. k)
@@ -52,26 +52,27 @@ r.to_csv(csv_file)
 ! vd {csv_file}
 ]]
 
-function kitty.setup(config)
+function M.setup(config)
     c([[
-    highlight KittyCellDelimiterColor guifg=#191920 guibg=#1e1f28 
+    highlight KittyCellDelimiterColor guifg=#191920 guibg=#1e1f28
     sign define KittyCellDelimiters linehl=KittyCellDelimiterColor text=>
     ]])
+    M.init_user_commands()
 end
 
-function kitty.repl_prefix()
+function M.repl_prefix()
     if vim.bo.filetype == "python" then
         return "%cpaste -q\n"
    end
 end
 
-function kitty.repl_suffix()
+function M.repl_suffix()
     if vim.bo.filetype == "python" then
         return "--\n"
     end
 end
 
-function kitty.highlight_cell_delimiter()
+function M.highlight_cell_delimiter()
     c("sign unplace * group=KittyCellDelimiters buffer=" .. vim.fn.bufnr())
     local lines = vim.fn.getline(0, '$')
     for line_number, line in pairs(lines) do
@@ -89,13 +90,11 @@ end
 
 
 
-function kitty.open_ipython()
-    local script = io.open(kitty.path .. "/open_ipython.sh", "r")
-    local query = script:read("*all")
-    script:close()
-    kitty.id = vim.fn.system(query)
+function M.open(program)
+    M.id = vim.fn.system("kitty @ --to unix:/tmp/mykitty launch  --type=os-window " .. program):gsub("\n+[^\n]*$", "")
+   print("id:", M.id)
 end
-function kitty.send_cell()
+function M.send_cell()
     local line_ini = vim.fn.search(cell_delimiter, 'bcnW')
     local line_end = vim.fn.search(cell_delimiter, 'nW')
 
@@ -105,48 +104,48 @@ function kitty.send_cell()
     local line_end = line_end and line_end - 1 or vim.fn.line("$")
 
     if line_ini <= line_end then
-        kitty.send_range(line_ini, line_end)
+        M.send_range(line_ini, line_end)
     end
 end
 
-function kitty.send_range(startline, endline)
+function M.send_range(startline, endline)
     -- save registers for restore
     local rv = vim.fn.getreg('"')
     local rt = vim.fn.getregtype('"')
     vim.cmd( startline .. ',' ..  endline .. "yank" )
     local payload = vim.fn.getreg("@\"")
-    local prefix = kitty.repl_prefix()
-    local suffix = kitty.repl_suffix()
+    local prefix = M.repl_prefix()
+    local suffix = M.repl_suffix()
 
     if prefix then
-        kitty.send(prefix)
+        M.send(prefix)
     end
-    kitty.send(payload)
+    M.send(payload)
     if suffix then
-        kitty.send(suffix)
+        M.send(suffix)
     end
     -- restore
     vim.fn.setreg('"', rv, rt)
 end
 
-function kitty.send_current_line()
+function M.send_current_line()
     local line = vim.fn.line(".")
     local payload = vim.fn.getline(line)
-    kitty.send(payload .. "\n")
+    M.send(payload .. "\n")
 end
 
-function kitty.send_selected_lines()
+function M.send_selected_lines()
     local startline = vim.fn.line("'<")
     local endline = vim.fn.line("'>")
-    kitty.send_range(startline, endline)
+    M.send_range(startline, endline)
 end
 
-function kitty.send_current_word()
+function M.send_current_word()
     vim.cmd("normal! yiw")
-    kitty.send(vim.fn.getreg("@\"") .. "\n")
+    M.send(vim.fn.getreg("@\"") .. "\n")
 end
 
-function kitty.send_file()
+function M.send_file()
     local filename = vim.fn.expand("%:p")
     local payload = ""
     local lines = vim.fn.readfile(filename)
@@ -154,52 +153,70 @@ function kitty.send_file()
         payload = payload .. line .. "\n"
     end
 
-    local prefix = kitty.repl_prefix()
-    local suffix = kitty.repl_suffix()
+    local prefix = M.repl_prefix()
+    local suffix = M.repl_suffix()
 
     if prefix then
-        kitty.send(prefix)
+        M.send(prefix)
     end
 
-    kitty.send(payload)
+    M.send(payload)
     if suffix then
-        kitty.send(suffix)
+        M.send(suffix)
     end
 
 end
 
-function kitty.send(text)
+function M.send(text)
    local  to_flag = " --to " .. vim.fn.shellescape(kitty_listen_on)
-   local cmd = "kitty @" .. to_flag .. " send-text --match id:" .. vim.fn.shellescape(kitty.id) .. " --stdin"
+   local cmd = "kitty @" .. to_flag .. " send-text --match id:" .. vim.fn.shellescape(M.id) .. " --stdin"
    vim.fn.system(cmd, text)
+   print("text:", text)
+   print("cmd:", cmd)
 end
 
-function kitty._store_var()
+function M._store_var()
     vim.cmd("normal! yiw")
-    kitty.send("r = " .. vim.fn.getreg("@\"") .. "\n")
+    M.send("r = " .. vim.fn.getreg("@\"") .. "\n")
 end
 
-function kitty.do_imports()
-    kitty.send(imports .. "\n")
+function M.do_imports()
+    M.send(imports .. "\n")
 end
 
-function kitty.fx_current_word()
-    kitty._store_var()
-    kitty.send(fx_cmd .. "\n")
+function M.fx_current_word()
+    M._store_var()
+    M.send(fx_cmd .. "\n")
 end
 
-function kitty.hexyl_current_word()
-    kitty._store_var()
-    kitty.send(hexyl_cmd .. "\n")
+function M.hexyl_current_word()
+    M._store_var()
+    M.send(hexyl_cmd .. "\n")
 end
 
-function kitty.nvim_current_word()
-    kitty._store_var()
-    kitty.send(nvim_cmd .. "\n")
+function M.nvim_current_word()
+    M._store_var()
+    M.send(nvim_cmd .. "\n")
 end
 
-function kitty.vd_current_word()
-    kitty._store_var()
-    kitty.send(vd_cmd .. "\n")
+function M.vd_current_word()
+    M._store_var()
+    M.send(vd_cmd .. "\n")
 end
-return kitty
+local function _C(name, cb, desc)
+    vim.api.nvim_create_user_command("Kitty" .. name, cb, {
+        nargs = "*",
+        desc = desc,
+    })
+end
+function M.init_user_commands()
+    _C("IPy", function() M.open("/Users/lucanaef/mambaforge/bin/ipython") end, "Open IPython in Kitty")
+    _C("Nu", function() M.open("/Users/lucanaef/.cargo/bin/nu") end, "Open Nu in Kitty")
+    _C("SendCell", M.send_cell, "Send Cell in Kitty")
+    _C("SendCurrentLine", M.send_current_line, "Send Cell in Kitty")
+    _C("SendWord", M.send_current_word, "Send Cell in Kitty")
+    _C("SendLines", M.send_selected_lines, "Send Cell in Kitty")
+    _C("Reload", M.reload, "Reload Kitty (DevTool)")
+end
+
+return M
