@@ -1,6 +1,22 @@
 local M = {}
 local c = vim.cmd
 
+-- different REPLs require different delimiters etc to work properly
+-- this config dir holds all the configurations
+-- blocks are blocks of lines, e.g. send via range selection or via jupytext-like cells
+
+local config = {
+    nu = {
+        block_delimiter_start = "",
+        block_delimiter_end = "",
+        newline_delimiter = "",
+    },
+    python = {
+        block_delimiter_start = "",
+        block_delimiter_end = "",
+        newline_delimiter = "",
+    },
+}
 M.path = os.getenv("HOME") .. "/kitty.nvim/lua/kitty/"
 -- this is a dev tool which helps reloading
 -- the pluggin files
@@ -60,20 +76,6 @@ function M.setup(config)
     M.init_user_commands()
 end
 
-function M.repl_prefix()
-    local t = vim.bo.filetype
-    if t == "python" then
-        return "%cpaste -q\n"
-   end
-end
-
-function M.repl_suffix()
-    local t = vim.bo.filetype
-    if t == "python" then
-        return "--"
-   end
-end
-
 function M.highlight_cell_delimiter()
     c("sign unplace * group=KittyCellDelimiters buffer=" .. vim.fn.bufnr())
     local lines = vim.fn.getline(0, '$')
@@ -97,27 +99,36 @@ function M.open(program)
     M.id = vim.fn.system("kitty @ --to unix:/tmp/mykitty launch  --type=os-window zsh -c '" .. program.. "'" ):gsub("\n+[^\n]*$", "")
 end
 function M.send_cell()
-    local line_ini = vim.fn.search(cell_delimiter, 'bcnW')
-    local line_end = vim.fn.search(cell_delimiter, 'nW')
+    local opts = {}
+    opts.line1 = vim.fn.search(cell_delimiter, 'bcnW')
+    opts.line2 = vim.fn.search(cell_delimiter, 'nW')
 
     -- line after delimiter or top of file
-    local line_ini = line_ini and line_ini + 1 or  1
+    opts.line1 = opts.line1 and opts.line1 + 1 or  1
     -- line before delimiter or bottom of file
-    local line_end = line_end and line_end - 1 or vim.fn.line("$")
+    opts.line2 = opts.line2 and opts.line2 - 1 or vim.fn.line("$")
 
-    if line_ini <= line_end then
-        M.send_range(line_ini, line_end)
+    if opts.line1 <= opts.line2 then
+        M.send_range(opts)
     end
 end
 
-function M.send_range(startline, endline)
+function M.send_range(opts)
+    local startline = opts.line1
+    local endline = opts.line2
     -- save registers for restore
     local rv = vim.fn.getreg('"')
     local rt = vim.fn.getregtype('"')
-    vim.cmd( startline .. ',' ..  endline .. "yank" )
+    c( startline .. ',' ..  endline .. "yank" )
     local payload = vim.fn.getreg("@\"")
-    local prefix = M.repl_prefix()
-    local suffix = M.repl_suffix()
+    -- restore
+    M.send_block(payload)
+    vim.fn.setreg('"', rv, rt)
+end
+
+function M.send_block(payload)
+    local prefix = config[vim.bo.filetype].block_delimiter_start
+    local suffix = config[vim.bo.filetype].block_delimiter_end
 
     if prefix then
         M.send(prefix)
@@ -126,22 +137,15 @@ function M.send_range(startline, endline)
     if suffix then
         M.send(suffix)
     end
-    -- restore
-    vim.fn.setreg('"', rv, rt)
 end
-
 function M.send_current_line()
     local line = vim.fn.line(".")
     local payload = vim.fn.getline(line)
     M.send(payload .. "\n")
 end
 
-function M.send_selected_lines(opts)
-    M.send_range(opts.line1, opts.line2)
-end
-
 function M.send_current_word()
-    vim.cmd("normal! yiw")
+    c("normal! yiw")
     M.send(vim.fn.getreg("@\"") .. "\n")
 end
 
@@ -152,19 +156,7 @@ function M.send_file()
     for _, line in ipairs(lines) do
         payload = payload .. line .. "\n"
     end
-
-    local prefix = M.repl_prefix()
-    local suffix = M.repl_suffix()
-
-    if prefix then
-        M.send(prefix)
-    end
-
-    M.send(payload)
-    if suffix then
-        M.send(suffix)
-    end
-
+    M.send_block(payload)
 end
 
 function M.send(text)
@@ -175,7 +167,7 @@ function M.send(text)
 end
 
 function M._store_var()
-    vim.cmd("normal! yiw")
+    c("normal! yiw")
     M.send("r = " .. vim.fn.getreg("@\"") .. "\n")
 end
 
@@ -202,6 +194,15 @@ function M.vd_current_word()
     M._store_var()
     M.send(vd_cmd .. "\n")
 end
+
+M.get_selection = function()
+    vim.cmd('normal! y')
+    return vim.fn.getreg('"')
+end
+M.send_selection = function()
+    M.send(M.get_selection())
+end
+
 local function _C(name, cb, desc, range)
     vim.api.nvim_create_user_command("Kitty" .. name, cb, {
         nargs = "*",
@@ -209,6 +210,7 @@ local function _C(name, cb, desc, range)
         range = range or 1,
     })
 end
+
 function M.init_user_commands()
     _C("IPy", function() M.open("ipython") end, "Open IPython in Kitty")
     _C("Nu", function() M.open("nu") end, "Open Nu in Kitty")
@@ -217,8 +219,9 @@ function M.init_user_commands()
     _C("SendCell", M.send_cell, "Send Cell in Kitty")
     _C("SendCurrentLine", M.send_current_line, "Send Cell in Kitty")
     _C("SendWord", M.send_current_word, "Send Cell in Kitty")
-    _C("SendLines", M.send_selected_lines, "Send Cell in Kitty", "%")
+    _C("SendLines", M.send_range, "Send Cell in Kitty", "%")
     _C("SendFile", M.send_file, "Send File in Kitty")
+    _C("SendSelection", M.send_selection, "Send selection in Kitty")
     _C("Reload", M.reload, "Reload Kitty (DevTool)")
 end
 
