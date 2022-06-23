@@ -12,8 +12,8 @@ local config = {
         newline_delimiter = "",
     },
     python = {
-        block_delimiter_start = "",
-        block_delimiter_end = "",
+        block_delimiter_start = "%cpaste -q\n",
+        block_delimiter_end = "--\n",
         newline_delimiter = "",
     },
 }
