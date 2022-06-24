@@ -119,8 +119,9 @@ function M.send_range(opts)
     -- save registers for restore
     local rv = vim.fn.getreg('"')
     local rt = vim.fn.getregtype('"')
-    c( startline .. ',' ..  endline .. "yank" )
-    local payload = vim.fn.getreg("@\"")
+    -- yank range silently
+    c(  "silent! ".. startline .. ',' ..  endline .. "yank" )
+    local payload = vim.fn.getreg('"')
     -- restore
     M.send_block(payload)
     vim.fn.setreg('"', rv, rt)
