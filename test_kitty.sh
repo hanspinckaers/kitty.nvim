@@ -1,3 +1,3 @@
 #! /bin/bash
 
-echo "\r"  |  kitty @ send-text --match id: 22 --stdin
+echo "\r"  |  kitty @ send-text --match id: 24 --stdin

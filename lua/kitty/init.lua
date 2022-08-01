@@ -161,8 +161,7 @@ function M.send_file()
 end
 
 function M.send(text)
-   local  to_flag = " --to " .. vim.fn.shellescape(kitty_listen_on)
-   local cmd = "kitty @" .. to_flag .. " send-text --match id:" .. vim.fn.shellescape(M.id) .. " --stdin"
+   local cmd = "kitty @ send-text --match recent:1 --stdin"
    vim.fn.system(cmd, text)
    vim.fn.system(cmd, "\r")
 end
@@ -196,10 +195,20 @@ function M.vd_current_word()
     M.send(vd_cmd .. "\n")
 end
 
-M.get_selection = function()
-    vim.cmd('normal! y')
-    return vim.fn.getreg('"')
+function M.get_selection()
+  local s_start = vim.fn.getpos("'<")
+  local s_end = vim.fn.getpos("'>")
+  local n_lines = math.abs(s_end[2] - s_start[2]) + 1
+  local lines = vim.api.nvim_buf_get_lines(0, s_start[2] - 1, s_end[2], false)
+  lines[1] = string.sub(lines[1], s_start[3], -1)
+  if n_lines == 1 then
+    lines[n_lines] = string.sub(lines[n_lines], 1, s_end[3] - s_start[3] + 1)
+  else
+    lines[n_lines] = string.sub(lines[n_lines], 1, s_end[3])
+  end
+  return table.concat(lines, '\n')
 end
+
 M.send_selection = function()
     M.send(M.get_selection())
 end
